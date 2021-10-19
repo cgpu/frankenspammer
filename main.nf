@@ -26,6 +26,11 @@ log.info "container                             : ${params.container}"
 log.info "maxForks                              : ${params.maxForks}"
 log.info "queueSize                             : ${params.queueSize}"
 log.info "executor                              : ${params.executor}"
+log.info "pre-script                            : ${params.pre_script}"
+log.info "post-script                           : ${params.post_script}"
+log.info "save-script                           : ${params.save_script}"
+log.info "optional-log-file-pattern             : *${params.optional_log_pattern}*"
+
 if(params.executor == 'awsbatch') {
 log.info "aws_batch_cliPath                     : ${params.aws_batch_cliPath}"
 log.info "aws_batch_fetchInstanceType           : ${params.aws_batch_fetchInstanceType}"
@@ -84,7 +89,7 @@ process processA {
 	sleep \$timeToWait
 	echo "task cpus: ${task.cpus}"
 
-	${params.savescript}
+	${params.save_script}
 	"""
 }
 
@@ -92,13 +97,20 @@ process processB {
 
 	input:
 	val x from processAOutput
+	publishDir "${params.outdir}/debug-logs/${task.process}/${task.hash}", mode: "copy", pattern: "${params.optional_log_pattern}"
 
+	output:
+	file("*${params.optional_log_pattern}*") optional true
 
 	"""
-    # Simulate the time the processes takes to finish
-    timeToWait=\$(shuf -i ${params.processBTimeRange} -n 1)
-    sleep \$timeToWait
-	dd if=/dev/urandom of=newfile bs=1M count=${params.processBWriteToDiskMb}	
+	${params.pre_script}
+	
+    	# Simulate the time the processes takes to finish
+    	timeToWait=\$(shuf -i ${params.processBTimeRange} -n 1)
+    	sleep \$timeToWait
+	dd if=/dev/urandom of=newfile bs=1M count=${params.processBWriteToDiskMb}
+	
+	${params.post_script}
 	"""
 }
 
@@ -108,9 +120,9 @@ process processC {
 	val x from processCInput
 
 	"""
-    # Simulate the time the processes takes to finish
-    timeToWait=\$(shuf -i ${params.processCTimeRange} -n 1)
-    sleep \$timeToWait
+    	# Simulate the time the processes takes to finish
+   	timeToWait=\$(shuf -i ${params.processCTimeRange} -n 1)
+   	sleep \$timeToWait
 	"""
 }
 
@@ -121,8 +133,8 @@ process processD {
 	val x from processDInput
 
 	"""
-    # Simulate the time the processes takes to finish
-    timeToWait=\$(shuf -i ${params.processDTimeRange} -n 1)
-    sleep \$timeToWait
+    	# Simulate the time the processes takes to finish
+    	timeToWait=\$(shuf -i ${params.processDTimeRange} -n 1)
+    	sleep \$timeToWait
 	"""
 }
